@@ -1,0 +1,7 @@
+customtkinter==5.2.2
+Pillow==10.1.0
+piexif==0.0.14
+pypdf==4.0.1
+requests==2.31.0
+PyInstaller==6.1.0
+python-dotenv==1.0.0
