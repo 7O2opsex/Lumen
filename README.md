@@ -46,6 +46,7 @@ Lumen est un outil OSINT complètement local. Toutes les données restent sur la
 Lumen/
 ├── main.py                          # Point d'entrée principal
 ├── requirements.txt                 # Dépendances Python
+├── launch.bat                       # Installation des dépendances et lancement Windows
 ├── lumen/
 │   ├── __init__.py
 │   ├── ui/
@@ -89,19 +90,25 @@ Lumen/
 
 ### Installation
 
+#### Windows (automatique)
+
+Double-cliquez sur `launch.bat` à la racine du projet. Le script crée un environnement virtuel `.venv` s'il n'existe pas, installe les dépendances, puis lance l'application. Python 3.11 ou supérieur doit être installé.
+
+#### Installation manuelle
+
 ```bash
 # Cloner le dépôt
 git clone https://github.com/7O2opsex/Lumen.git
 cd Lumen
 
 # Créer un environnement virtuel
-python -m venv venv
+python -m venv .venv
 
 # Activer l'environnement virtuel
 # Windows
-venv\Scripts\activate
+.venv\Scripts\activate
 # Linux/Mac
-source venv/bin/activate
+source .venv/bin/activate
 
 # Installer les dépendances
 pip install -r requirements.txt

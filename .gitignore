@@ -29,6 +29,7 @@ dist/
 *.bin
 
 # Virtual Environment
+.venv/
 venv/
 env/
 ENV/
