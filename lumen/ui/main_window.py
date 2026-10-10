@@ -1,7 +1,17 @@
-"""Main CustomTkinter application window."""
+"""Main CustomTkinter application window.
+
+THESIS: Lumen is a precise, private analysis instrument, not a generic dashboard.
+OWN-WORLD: Dark optical surfaces, theme-tinted oxygen bubbles, and crisp light-catching controls.
+STORY: The user sees a private local workspace, selects an OSINT task, and acts without losing context.
+FIRST VIEWPORT: Lumen's illuminated wordmark and local badge sit above four clear task tabs and a quiet status strip.
+FORM: A compact desktop instrument panel, animated only by slow bubbles and the focused Premium reveal.
+"""
 
 import json
+import math
+import random
 import re
+import time
 from pathlib import Path
 from tkinter import Canvas, colorchooser, filedialog, messagebox
 from typing import Any, Callable
@@ -38,6 +48,8 @@ class LumenApp(ctk.CTk):
         self.theme_name = self.settings["theme"]
         self.accent_override = self.settings.get("accent")
         self.premium_unlocked = bool(self.settings.get("premium_unlocked", False))
+        self._background_items: list[tuple[int, int, float, float, float, float]] = []
+        self._background_animation: str | None = None
         self._set_theme_palette(self.theme_name)
 
         ctk.set_appearance_mode("light" if self.theme_name == "Clair rouge et blanc" else "dark")
@@ -53,15 +65,103 @@ class LumenApp(ctk.CTk):
     def _build_app_content(self) -> None:
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
+        self._build_ambient_background()
         self._build_header()
         self._build_tabs()
         self.status_text = ctk.StringVar(value="Prêt — vos analyses restent sur cet appareil.")
-        ctk.CTkLabel(
+        status_bar = ctk.CTkFrame(
             self,
+            fg_color=DARK_THEME["bg_alt"],
+            corner_radius=10,
+            border_width=1,
+            border_color=DARK_THEME["border"],
+        )
+        status_bar.grid(row=2, column=0, sticky="ew", padx=22, pady=(0, 14))
+        ctk.CTkLabel(
+            status_bar,
+            text="●",
+            text_color=DARK_THEME["accent"],
+            font=ctk.CTkFont(size=12, weight="bold"),
+        ).pack(side="left", padx=(13, 7), pady=8)
+        ctk.CTkLabel(
+            status_bar,
             textvariable=self.status_text,
             anchor="w",
             text_color=DARK_THEME["muted"],
-        ).grid(row=2, column=0, sticky="ew", padx=22, pady=(0, 12))
+        ).pack(side="left", fill="x", expand=True, pady=8, padx=(0, 12))
+
+    def _build_ambient_background(self) -> None:
+        canvas = Canvas(
+            self,
+            bg=DARK_THEME["bg"],
+            highlightthickness=0,
+            bd=0,
+        )
+        canvas.place(relwidth=1, relheight=1)
+        canvas.tk.call("lower", canvas._w)
+        rng = random.Random(702)
+        bubble_color = DARK_THEME["bubble"]
+        for _ in range(25):
+            radius = rng.uniform(7, 26)
+            x = rng.uniform(0, 1080)
+            y = rng.uniform(0, 740)
+            oval = canvas.create_oval(
+                x - radius,
+                y - radius,
+                x + radius,
+                y + radius,
+                outline=DARK_THEME["border"],
+                width=1,
+            )
+            reflection = canvas.create_arc(
+                x - radius * 0.58,
+                y - radius * 0.72,
+                x + radius * 0.56,
+                y + radius * 0.46,
+                start=65,
+                extent=78,
+                style="arc",
+                outline=bubble_color,
+                width=1,
+            )
+            self._background_items.append(
+                (oval, reflection, x, y, radius, rng.uniform(0.12, 0.38))
+            )
+        self._animate_ambient_background(canvas, 0)
+
+    def _animate_ambient_background(self, canvas: Canvas, frame: int) -> None:
+        if not canvas.winfo_exists():
+            return
+        width = max(canvas.winfo_width(), 1)
+        height = max(canvas.winfo_height(), 1)
+        updated: list[tuple[int, int, float, float, float, float]] = []
+        for oval, reflection, x, y, radius, speed in self._background_items:
+            y -= speed
+            if y < -radius * 2:
+                y = height + radius
+                x = (x + 137) % width
+            drift = math.sin((frame + x) / 90) * 8
+            center_x = (x + drift) % width
+            canvas.coords(
+                oval,
+                center_x - radius,
+                y - radius,
+                center_x + radius,
+                y + radius,
+            )
+            canvas.coords(
+                reflection,
+                center_x - radius * 0.58,
+                y - radius * 0.72,
+                center_x + radius * 0.56,
+                y + radius * 0.46,
+            )
+            updated.append((oval, reflection, x, y, radius, speed))
+        self._background_items = updated
+        self._background_animation = self.after(
+            48,
+            lambda: self._animate_ambient_background(canvas, frame + 1),
+        )
 
     def _load_settings(self) -> dict[str, Any]:
         if not self.settings_path.exists():
@@ -128,6 +228,7 @@ class LumenApp(ctk.CTk):
         if self.accent_override and theme_name != "Obsidienne dorée":
             DARK_THEME["primary"] = self.accent_override
             DARK_THEME["accent"] = self.accent_override
+            DARK_THEME["bubble"] = self.accent_override
 
     def _on_global_keypress(self, event: Any) -> str | None:
         focused_widget = self.focus_get()
@@ -151,7 +252,7 @@ class LumenApp(ctk.CTk):
     def _open_premium_code(self) -> None:
         dialog = ctk.CTkToplevel(self)
         dialog.title("Lumen — accès secret")
-        dialog.geometry("420x230")
+        dialog.geometry("500x290")
         dialog.resizable(False, False)
         dialog.configure(fg_color=THEMES["Obsidienne dorée"]["bg"])
         dialog.transient(self)
@@ -160,20 +261,23 @@ class LumenApp(ctk.CTk):
         gold = THEMES["Obsidienne dorée"]["primary"]
         ctk.CTkLabel(
             dialog,
-            text="Une signature vous attend",
-            font=ctk.CTkFont(size=22, weight="bold"),
+            text="La lumière vous est réservée",
+            font=ctk.CTkFont(size=24, weight="bold"),
             text_color=gold,
         ).pack(pady=(28, 8))
         ctk.CTkLabel(
             dialog,
-            text="Saisissez le code secret pour révéler le thème doré.",
+            text="Entrez votre signature pour révéler Lumen Obsidienne.",
             text_color=THEMES["Obsidienne dorée"]["muted"],
         ).pack(pady=(0, 14))
         code_entry = ctk.CTkEntry(
             dialog,
             placeholder_text="Code secret",
             show="•",
-            width=260,
+            width=310,
+            height=42,
+            corner_radius=12,
+            border_color=THEMES["Obsidienne dorée"]["border"],
         )
         code_entry.pack(pady=(0, 10))
         feedback = ctk.CTkLabel(dialog, text="", text_color="#F07171")
@@ -211,76 +315,150 @@ class LumenApp(ctk.CTk):
     def _play_premium_reveal(self) -> None:
         palette = THEMES["Obsidienne dorée"]
         reveal = ctk.CTkToplevel(self)
-        reveal.title("Lumen Obsidienne")
-        reveal.geometry("540x280")
-        reveal.resizable(False, False)
+        reveal.title("Lumen Obsidienne — Premium")
+        reveal.attributes("-fullscreen", True)
+        reveal.attributes("-topmost", True)
         reveal.configure(fg_color=palette["bg"])
         reveal.transient(self)
 
         canvas = Canvas(
             reveal,
-            width=540,
-            height=280,
             bg=palette["bg"],
             highlightthickness=0,
         )
         canvas.pack(fill="both", expand=True)
-        canvas.create_text(
-            270,
-            116,
+        cx, cy = reveal.winfo_screenwidth() / 2, reveal.winfo_screenheight() / 2
+        rings = [
+            canvas.create_oval(
+                cx - radius,
+                cy - radius,
+                cx + radius,
+                cy + radius,
+                outline=color,
+                width=width,
+            )
+            for radius, color, width in (
+                (94, palette["border"], 1),
+                (122, palette["primary"], 1),
+                (152, palette["border"], 1),
+            )
+        ]
+        core = canvas.create_oval(
+            cx - 78,
+            cy - 78,
+            cx + 78,
+            cy + 78,
+            fill=palette["bg_alt"], outline=palette["primary"], width=2,
+        )
+        shine = canvas.create_oval(
+            cx - 55,
+            cy - 55,
+            cx + 55,
+            cy + 55,
+            outline=palette["accent"], width=1,
+        )
+        title = canvas.create_text(
+            cx,
+            cy - 6,
             text="L U M E N",
             fill=palette["text"],
-            font=("Segoe UI", 27, "bold"),
+            font=("Segoe UI", 30, "bold"),
         )
-        canvas.create_text(
-            270,
-            157,
+        subtitle = canvas.create_text(
+            cx,
+            cy + 40,
             text="OBSIDIAN  /  GOLD",
             fill=palette["primary"],
             font=("Segoe UI", 10, "bold"),
         )
-        canvas.create_text(
-            270,
-            190,
-            text="Une nouvelle signature est révélée.",
+        caption = canvas.create_text(
+            cx,
+            cy + 190,
+            text="UNE NOUVELLE SIGNATURE SE RÉVÈLE",
             fill=palette["muted"],
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 10, "bold"),
         )
-
-        top_line = canvas.create_line(0, 70, 0, 70, fill=palette["primary"], width=2)
-        bottom_line = canvas.create_line(
-            540,
-            222,
-            540,
-            222,
-            fill=palette["primary"],
+        sweep = canvas.create_line(
+            0,
+            cy,
+            0,
+            cy,
+            fill=palette["accent"],
             width=2,
         )
+        particles = []
+        rng = random.Random(702)
+        for _ in range(34):
+            x = rng.uniform(0, reveal.winfo_screenwidth())
+            y = rng.uniform(0, reveal.winfo_screenheight())
+            radius = rng.uniform(1, 3)
+            speed = rng.uniform(0.35, 1.1)
+            item = canvas.create_oval(
+                x - radius,
+                y - radius,
+                x + radius,
+                y + radius,
+                fill=palette["primary"], outline="",
+            )
+            particles.append((item, x, y, radius, speed))
 
-        def animate_line(position: int = 0) -> None:
+        started_at = time.monotonic()
+        reveal.bind("<Escape>", lambda _event: finish())
+
+        def animate_reveal() -> None:
             if not reveal.winfo_exists():
                 return
-            if position <= 500:
-                canvas.coords(top_line, position, 70, min(position + 48, 520), 70)
+            elapsed = time.monotonic() - started_at
+            width, height = reveal.winfo_width(), reveal.winfo_height()
+            cx, cy = width / 2, height / 2
+            phase = min(elapsed / 2.5, 1.0)
+            scale = 0.72 + phase * 0.28
+            for radius, item in zip((94, 122, 152), rings):
+                scaled = radius * scale + math.sin(elapsed * 2 + radius) * 2
+                canvas.coords(item, cx - scaled, cy - scaled, cx + scaled, cy + scaled)
+            canvas.coords(
+                core,
+                cx - 78 * scale,
+                cy - 78 * scale,
+                cx + 78 * scale,
+                cy + 78 * scale,
+            )
+            shine_radius = 55 + math.sin(elapsed * 3) * 5
+            canvas.coords(
+                shine,
+                cx - shine_radius,
+                cy - shine_radius,
+                cx + shine_radius,
+                cy + shine_radius,
+            )
+            canvas.coords(title, cx, cy - 6)
+            canvas.coords(subtitle, cx, cy + 40)
+            canvas.coords(caption, cx, cy + 190)
+            sweep_x = (elapsed / 2.7) * width
+            canvas.coords(sweep, sweep_x - 130, cy, sweep_x + 130, cy)
+            for item, x, y, radius, speed in particles:
+                next_y = (y - elapsed * speed * 24) % height
                 canvas.coords(
-                    bottom_line,
-                    540 - position,
-                    222,
-                    max(540 - position - 48, 20),
-                    222,
+                    item,
+                    x - radius,
+                    next_y - radius,
+                    x + radius,
+                    next_y + radius,
                 )
-                reveal.after(16, lambda: animate_line(position + 24))
+            if elapsed >= 3.0:
+                finish()
             else:
-                reveal.after(650, finish)
+                reveal.after(32, animate_reveal)
 
         def finish() -> None:
             if reveal.winfo_exists():
+                reveal.attributes("-topmost", False)
                 reveal.destroy()
             ctk.set_appearance_mode("dark")
             self._set_theme_palette(self.theme_name)
             self._rebuild_interface()
 
-        animate_line()
+        reveal.after(32, animate_reveal)
 
     def _rebuild_interface(self) -> None:
         selected_tab = self.tabs.get()
@@ -295,8 +473,12 @@ class LumenApp(ctk.CTk):
             for name in ("identity_output", "link_output")
             if hasattr(self, name)
         }
+        if self._background_animation is not None:
+            self.after_cancel(self._background_animation)
+            self._background_animation = None
         for child in self.winfo_children():
             child.destroy()
+        self._background_items.clear()
         self.configure(fg_color=DARK_THEME["bg"])
         self._build_app_content()
         self.tabs.set(selected_tab)
@@ -316,8 +498,8 @@ class LumenApp(ctk.CTk):
     def _open_settings(self) -> None:
         dialog = ctk.CTkToplevel(self)
         dialog.title("Réglages de l’interface")
-        dialog.geometry("480x470")
-        dialog.resizable(False, False)
+        dialog.geometry("500x530")
+        dialog.minsize(460, 500)
         dialog.configure(fg_color=DARK_THEME["bg"])
         dialog.transient(self)
 
@@ -424,28 +606,56 @@ class LumenApp(ctk.CTk):
         self._rebuild_interface()
 
     def _build_header(self) -> None:
-        header = ctk.CTkFrame(self, fg_color="transparent")
+        header = ctk.CTkFrame(
+            self,
+            fg_color=DARK_THEME["bg_alt"],
+            corner_radius=16,
+            border_width=1,
+            border_color=DARK_THEME["border"],
+        )
         header.grid(row=0, column=0, sticky="ew", padx=22, pady=(18, 12))
         header.grid_columnconfigure(0, weight=1)
+        brand = ctk.CTkFrame(header, fg_color="transparent")
+        brand.grid(row=0, column=0, rowspan=2, sticky="w", padx=(18, 0), pady=13)
         ctk.CTkLabel(
-            header,
+            brand,
+            text="◉",
+            font=ctk.CTkFont(size=26, weight="bold"),
+            text_color=DARK_THEME["accent"],
+        ).pack(side="left", padx=(0, 11))
+        wordmark = ctk.CTkFrame(brand, fg_color="transparent")
+        wordmark.pack(side="left")
+        ctk.CTkLabel(
+            wordmark,
             text=APP_NAME,
-            font=ctk.CTkFont(size=28, weight="bold"),
+            font=ctk.CTkFont(size=25, weight="bold"),
             text_color=DARK_THEME["text"],
-        ).grid(row=0, column=0, sticky="w")
+        ).pack(anchor="w")
+        ctk.CTkLabel(
+            wordmark,
+            text=f"ANALYSE LOCALE   ·   V{APP_VERSION}",
+            font=ctk.CTkFont(size=9, weight="bold"),
+            text_color=DARK_THEME["muted"],
+        ).pack(anchor="w", pady=(2, 0))
         ctk.CTkLabel(
             header,
-            text=f"Local analysis workspace  |  v{APP_VERSION}",
-            text_color=DARK_THEME["muted"],
-        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
-        self._button(header, "⚙ Réglages", self._open_settings).grid(
-            row=0, column=1, rowspan=2, sticky="e", padx=(16, 0)
+            text="LOCAL  •  PRIVÉ",
+            font=ctk.CTkFont(size=10, weight="bold"),
+            text_color=DARK_THEME["accent"],
+            fg_color=DARK_THEME["surface"],
+            corner_radius=10,
+        ).grid(row=0, column=1, rowspan=2, sticky="e", padx=(12, 14), pady=14)
+        self._button(header, "Réglages  ⚙", self._open_settings).grid(
+            row=0, column=2, rowspan=2, sticky="e", padx=(0, 16), pady=14
         )
 
     def _build_tabs(self) -> None:
         self.tabs = ctk.CTkTabview(
             self,
-            fg_color=DARK_THEME["bg_alt"],
+            fg_color="transparent",
+            corner_radius=16,
+            border_width=1,
+            border_color=DARK_THEME["border"],
             segmented_button_fg_color=DARK_THEME["panel"],
             segmented_button_selected_color=DARK_THEME["primary"],
             segmented_button_selected_hover_color=DARK_THEME["primary"],
@@ -458,6 +668,8 @@ class LumenApp(ctk.CTk):
         self.identity_tab = self.tabs.add("Identity")
         self.links_tab = self.tabs.add("Links")
         self.dashboard_tab = self.tabs.add("Dashboard")
+        for tab in (self.exif_tab, self.identity_tab, self.links_tab, self.dashboard_tab):
+            tab.configure(fg_color="transparent")
 
         self._build_exif_tab()
         self._build_identity_tab()
@@ -560,11 +772,14 @@ class LumenApp(ctk.CTk):
             parent,
             text=label,
             command=self._guard(command),
-            height=34,
+            height=40,
+            corner_radius=11,
             fg_color=DARK_THEME["primary"],
             hover_color=self._hover_color(DARK_THEME["primary"]),
             text_color=self._button_text_color(DARK_THEME["primary"]),
             border_color=DARK_THEME["border"],
+            border_width=1,
+            font=ctk.CTkFont(size=12, weight="bold"),
         )
 
     @staticmethod

@@ -17,10 +17,11 @@ Lumen est un outil OSINT complètement local. Toutes les données restent sur la
 - 💾 Export JSON et TXT
 
 ### Apparence
-- 🎨 Thèmes Violet, Clair rouge et blanc, Marron et Obsidienne dorée
+- 🎨 Interface Python/CustomTkinter repensée : bulles animées en arrière-plan, reflets subtils et boutons plus soignés
+- 🎨 Thèmes Violet, Clair rouge et blanc, Marron et Obsidienne dorée, avec des accents propres à chaque palette
 - ⚙️ Choix du thème et de la couleur principale depuis les réglages
 - 💾 Préférences d'apparence mémorisées localement dans `data/lumen_settings.json`
-- ✨ Obsidienne dorée est un thème caché cosmétique : `Ctrl + Maj + L`, puis saisir `ilovelumen`
+- ✨ Après `Ctrl + Maj + L` et le code `ilovelumen`, une révélation plein écran d'environ 3 secondes présente Obsidienne dorée
 - 🔒 Le thème caché n'active aucun abonnement ni fonctionnalité payante
 
 ### 2. Identity
