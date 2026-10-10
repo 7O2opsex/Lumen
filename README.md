@@ -11,10 +11,17 @@ Lumen est un outil OSINT complètement local. Toutes les données restent sur la
 ### 1. Exif & Meta
 - 🖼️ Drag & drop d'images (JPG, PNG, WebP, TIFF) et PDF
 - 📊 Extraction complète EXIF / XMP / IPTC / GPS
-- 🔍 Affichage structuré et lisible
+- 🔍 Métadonnées présentées en sections lisibles et nommées
 - 🧹 Nettoyage des métadonnées (totale ou sélective)
 - 👁️ Prévisualisation avant/après
 - 💾 Export JSON et TXT
+
+### Apparence
+- 🎨 Thèmes Violet, Clair rouge et blanc, Marron et Obsidienne dorée
+- ⚙️ Choix du thème et de la couleur principale depuis les réglages
+- 💾 Préférences d'apparence mémorisées localement dans `data/lumen_settings.json`
+- ✨ Obsidienne dorée est un thème caché cosmétique : `Ctrl + Maj + L`, puis saisir `ilovelumen`
+- 🔒 Le thème caché n'active aucun abonnement ni fonctionnalité payante
 
 ### 2. Identity
 - 👤 **UserMap** : Recherche de pseudo sur une liste de sites configurables
