@@ -1,0 +1,43 @@
+HISTORIQUE DES MISES A JOUR — LUMEN
+===================================
+
+Les versions ci-dessous décrivent les publications successives sur la branche
+de l'interface Lumen. Les traitements d'analyse restent ceux de Lumen; les
+changements d'interface ou de packaging sont signalés séparément.
+
+V1.0 — Refonte visuelle initiale
+Commit : 1e156fc — Refresh Lumen graphical interface
+- Nouvelle présentation sombre, palettes revisitées et interface plus claire.
+- Ajout d'animations de bulles et premiers effets lumineux.
+- Première mise en scène du thème cosmétique Premium.
+- Les outils et les données locales de Lumen restent la base fonctionnelle.
+
+V1.1 — Amélioration haute résolution
+Commit : bc71c82 — Improve high-DPI interface rendering
+- Prise en charge améliorée du DPI Windows pour garder les textes plus nets.
+- Mise à l'échelle des éléments dessinés et animation plus régulière.
+- Aucun changement aux fonctions d'analyse.
+
+V1.5 — Nouvelle interface native PySide6
+Commit : ff8c0cb — Polish Lumen Qt interface
+- Remplacement de la couche graphique par un espace de travail PySide6,
+  avec navigation et vues Exif, Identity, Links et Dashboard.
+- Rendu typographique natif, contrôles et effets vectoriels plus soignés.
+- Mise à jour de la compilation et ajout de tests de l'interface.
+- Le choix de PySide6 augmente la taille de l'exécutable car Qt embarque son
+  moteur et ses ressources graphiques; les outils métier restent conservés.
+
+V1.6 — Réparation des actions et finition Premium
+Publication : commit courant de la branche
+- Réparation des boutons Exif, Identity et Links qui ne déclenchaient plus
+  leurs actions; les erreurs sont présentées à l'utilisateur.
+- Reveal Premium remplacé par une fenêtre temporaire sans bordure, non
+  plein-écran, avec halo doré animé et fermeture fiable après trois secondes
+  ou avec Échap.
+- Reflet doré animé réservé aux boutons d'action du thème Premium.
+- Ajout du logo Lumen en icône Windows (.ico) et PNG; intégration au lancement
+  et aux commandes de compilation.
+- Documentation précisée : seuls l'interface et le poids du programme évoluent;
+  les traitements d'analyse et le stockage local ne sont pas remplacés.
+- Ajout de tests de régression pour les clics des boutons, les erreurs, le
+  reveal Premium et l'icône.

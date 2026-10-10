@@ -25,7 +25,9 @@ Qt paints the ambient optical glow, illuminated surfaces, and Premium reveal
 with antialiased vectors at the active display's native scale. Hover light uses
 short, interruptible property animations. Background motion stays restrained
 and does not delay local analysis actions. Premium's secret cosmetic unlock adds
-a single full-screen, three-second gold reveal; Escape can dismiss it.
+a centered, borderless 620 × 420 gold reveal for three seconds; Escape can
+dismiss it. In the Premium theme, primary task buttons receive a restrained,
+animated gold reflection that pauses while their page is hidden.
 
 The first screen keeps Lumen's wordmark, local/private status, four persistent
 analysis destinations, and current activity visible. The four destinations are

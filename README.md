@@ -1,10 +1,14 @@
 # Lumen - Advanced Local OSINT Desktop Application
 
-**100% Local Data Processing with GUI**
+**Traitements métier locaux, avec une interface de bureau PySide6**
 
 ## 🎯 Objectif
 
-Lumen est un outil OSINT complètement local. Toutes les données restent sur la machine de l'utilisateur. L'application se compile en un seul fichier `.exe` autonome sans dépendances externes.
+Lumen est un outil OSINT local : ses traitements d'images, de PDF, d'identités et son historique restent sur l'appareil. Seule l'interface a changé dans cette version; les outils et leurs résultats métier restent les mêmes. Le suivi d'une URL continue de contacter le réseau uniquement lorsque l'utilisateur le demande.
+
+PySide6 remplace l'ancienne couche graphique pour bénéficier de contrôles natifs, d'une typographie mieux rendue et d'effets lumineux vectoriels plus fluides. Cette bibliothèque Qt embarque davantage de composants et de ressources d'interface : l'exécutable compilé est donc plus volumineux, sans que les fichiers analysés soient envoyés ailleurs ni que les fonctions métier changent.
+
+L’historique des versions et des publications est consigné dans [`UPDATE.txt`](UPDATE.txt).
 
 ## 📋 Caractéristiques
 
@@ -19,11 +23,11 @@ Lumen est un outil OSINT complètement local. Toutes les données restent sur la
 ### Apparence
 - 🎨 Interface PySide6 native : espace de travail structuré, navigation permanente et panneaux d’analyse lisibles
 - 🖥️ Typographie et éclairages vectoriels haute résolution, automatiquement adaptés au DPI de l’écran
-- ✨ Reflets lumineux animés et révélation Premium plein écran
+- ✨ Reflets lumineux animés et révélation Premium compacte, sans bordure
 - 🎨 Thèmes Violet, Clair rouge et blanc, Marron et Obsidienne dorée, avec des accents propres à chaque palette
 - ⚙️ Choix du thème et de la couleur principale depuis les réglages
 - 💾 Préférences d'apparence mémorisées localement dans `data/lumen_settings.json`
-- ✨ Après `Ctrl + Maj + L` et le code `ilovelumen`, une révélation plein écran d'environ 3 secondes présente Obsidienne dorée
+- ✨ Après `Ctrl + Maj + L` et le code `ilovelumen`, une fenêtre de révélation sans bordure présente Obsidienne dorée pendant 3 secondes
 - 🔒 Le thème caché n'active aucun abonnement ni fonctionnalité payante
 
 ### 2. Identity
@@ -57,6 +61,9 @@ Lumen/
 ├── main.py                          # Point d'entrée principal
 ├── requirements.txt                 # Dépendances Python
 ├── launch.bat                       # Installation des dépendances et lancement Windows
+├── assets/
+│   ├── lumen.ico                    # Icône Windows de l’application
+│   └── lumen.png                    # Icône multiplateforme
 ├── lumen/
 │   ├── __init__.py
 │   ├── ui/
@@ -144,10 +151,11 @@ build_exe.bat
 ### Commande manuelle
 
 ```bash
-pyinstaller --noconfirm --onefile --windowed --name Lumen --icon=icon.ico main.py
+pyinstaller --noconfirm --onefile --windowed --name Lumen --icon=assets/lumen.ico main.py
 ```
 
 Le fichier `.exe` sera généré dans `dist/Lumen.exe`
+et utilisera l’icône Lumen intégrée.
 
 ## 🔒 Architecture : Local vs Réseau
 

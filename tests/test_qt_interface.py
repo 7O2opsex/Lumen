@@ -78,7 +78,7 @@ class LumenInterfaceTests(unittest.TestCase):
         )
         self.application.sendEvent(drop_target, drop)
         self.assertEqual(Path(self.window.selected_file), image_path)
-        self.window._read_metadata()
+        self.window.read_button.click()
 
         self.assertEqual(self.window.current_metadata["size"]["width"], 24)
         self.assertIn("sample.jpg", self.window.metadata_output.toPlainText())
@@ -87,13 +87,62 @@ class LumenInterfaceTests(unittest.TestCase):
 
     def test_identity_operations_are_local_and_saved(self):
         self.window.name_entry.setText("Jane Doe")
-        self.window._generate_identity_report()
+        self.window.generate_button.click()
 
         report = self.window.identity_output.toPlainText()
         self.assertIn("name_variants", report)
         self.assertIn("Jane Doe", report)
         self.assertEqual(self.window.storage.get_history()[0]["kind"], "identity")
         self.assertIn("aucune recherche envoyée", self.window.status_text.text())
+
+    def test_identity_comparison_button_and_keyboard_submit_work(self):
+        self.window.identity_left.setText("lumen-user")
+        self.window.identity_right.setText("lumen_user")
+        self.window.compare_button.click()
+        self.assertEqual(
+            self.window.storage.get_history()[0]["kind"],
+            "identity-comparison",
+        )
+        self.assertIn("similarity_percent", self.window.identity_output.toPlainText())
+
+        self.window.name_entry.setText("Keyboard User")
+        self.window.name_entry.setFocus()
+        self.window.name_entry.returnPressed.emit()
+        self.assertEqual(self.window.storage.get_history()[0]["kind"], "identity")
+
+    def test_metadata_button_surfaces_errors(self):
+        selected_path = Path(self.temp_dir.name) / "broken.jpg"
+        self.window._set_selected_file(str(selected_path))
+        with (
+            patch(
+                "lumen.ui.qt_main_window.extract_metadata_for_file",
+                side_effect=ValueError("image data is invalid"),
+            ),
+            patch("lumen.ui.qt_main_window.QMessageBox.critical") as critical,
+        ):
+            self.window.read_button.click()
+        critical.assert_called_once()
+        self.assertIn("Échec", self.window.status_text.text())
+
+    def test_link_button_starts_async_resolution(self):
+        result = {
+            "input_url": "https://example.test/short",
+            "final_url": "https://example.test/final",
+            "redirects": [],
+            "suspicious": False,
+        }
+        self.window.url_entry.setText("https://example.test/short")
+        with patch("lumen.ui.qt_main_window.resolve_redirect_chain", return_value=result):
+            self.window.resolve_button.click()
+            for _ in range(40):
+                if self.window._link_task is None:
+                    break
+                QTest.qWait(25)
+
+        self.assertIsNone(self.window._link_task)
+        self.assertIn("https://example.test/final", self.window.link_output.toPlainText())
+        self.assertEqual(self.window.storage.get_history()[0]["kind"], "link")
+        self.assertTrue(self.window.resolve_button.isEnabled())
 
     def test_link_worker_reports_success_and_failure(self):
         result = {
@@ -124,6 +173,9 @@ class LumenInterfaceTests(unittest.TestCase):
         finished_spy = QSignalSpy(reveal.finished)
         self.assertEqual(reveal._animation.duration(), 3000)
         reveal.start()
+        self.assertFalse(reveal.isFullScreen())
+        self.assertEqual(reveal.size().width(), 620)
+        self.assertEqual(reveal.size().height(), 420)
         self.assertTrue(finished_spy.wait(3500))
         self.assertEqual(finished_spy.count(), 1)
         self.assertFalse(reveal.isVisible())
@@ -138,6 +190,35 @@ class LumenInterfaceTests(unittest.TestCase):
         self.assertEqual(finished_spy.count(), 1)
         reveal.deleteLater()
         self.application.processEvents()
+
+    def test_unlock_reveal_returns_to_live_main_window(self):
+        self.window.premium_unlocked = True
+        self.window.theme_name = "Obsidienne dorée"
+        self.window._set_theme_palette(self.window.theme_name)
+        self.window._apply_theme()
+
+        self.window._play_premium_reveal()
+        self.assertIsNotNone(self.window._premium_reveal)
+        for _ in range(140):
+            if self.window._premium_reveal is None:
+                break
+            QTest.qWait(25)
+
+        self.assertIsNone(self.window._premium_reveal)
+        self.assertTrue(self.window.isVisible())
+        self.assertIn("signature Premium activée", self.window.status_text.text())
+
+    def test_window_has_lumen_icon_and_premium_sheen_is_theme_limited(self):
+        self.assertFalse(self.window.windowIcon().isNull())
+        self.assertFalse(self.window.read_button._sheen_enabled)
+
+        self.window.premium_unlocked = True
+        self.window._select_theme("Obsidienne dorée")
+        self.assertTrue(self.window.read_button._sheen_enabled)
+        self.assertFalse(self.window.choose_file_button._sheen_enabled)
+
+        self.window._select_theme("Violet")
+        self.assertFalse(self.window.read_button._sheen_enabled)
 
 
 if __name__ == "__main__":

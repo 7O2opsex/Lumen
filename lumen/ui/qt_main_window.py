@@ -27,10 +27,13 @@ from PySide6.QtGui import (
     QAction,
     QColor,
     QFont,
+    QIcon,
     QKeySequence,
     QLinearGradient,
     QPainter,
+    QPainterPath,
     QPen,
+    QPixmap,
     QRadialGradient,
 )
 from PySide6.QtWidgets import (
@@ -240,6 +243,31 @@ class GlowButton(QPushButton):
         self._animation.setDuration(180)
         self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._animation.valueChanged.connect(self._set_glow)
+        self._sheen_progress = 0.0
+        self._sheen_enabled = False
+        self._sheen_animation = QPropertyAnimation(self, b"sheenProgress", self)
+        self._sheen_animation.setDuration(2600)
+        self._sheen_animation.setStartValue(0.0)
+        self._sheen_animation.setEndValue(1.0)
+        self._sheen_animation.setLoopCount(-1)
+        self._sheen_animation.setEasingCurve(QEasingCurve.Type.Linear)
+
+    def get_sheen_progress(self) -> float:
+        return self._sheen_progress
+
+    def set_sheen_progress(self, progress: float) -> None:
+        self._sheen_progress = progress
+        self.update()
+
+    sheenProgress = Property(float, get_sheen_progress, set_sheen_progress)
+
+    def set_sheen_enabled(self, enabled: bool) -> None:
+        self._sheen_enabled = enabled
+        if enabled and self.isVisible():
+            self._sheen_animation.start()
+        else:
+            self._sheen_animation.stop()
+        self.update()
 
     def _set_glow(self, value: Any) -> None:
         self._glow = float(value)
@@ -261,21 +289,50 @@ class GlowButton(QPushButton):
 
     def paintEvent(self, event: Any) -> None:
         super().paintEvent(event)
-        if self._glow <= 0.02 or not self.isEnabled():
+        if not self.isEnabled():
             return
-        accent = QColor(DARK_THEME["primary"])
-        accent.setAlpha(round(95 * self._glow))
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        pen = QPen(accent, 1.2)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 10, 10)
+        if self._glow > 0.02:
+            accent = QColor(DARK_THEME["primary"])
+            accent.setAlpha(round(95 * self._glow))
+            painter.setPen(QPen(accent, 1.2))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawRoundedRect(
+                QRectF(self.rect()).adjusted(1, 1, -1, -1), 10, 10
+            )
+        if self._sheen_enabled:
+            width, height = self.width(), self.height()
+            center_x = (self._sheen_progress * 1.7 - 0.35) * width
+            gradient = QLinearGradient(
+                center_x - width * 0.13,
+                height,
+                center_x + width * 0.13,
+                0,
+            )
+            gradient.setColorAt(0.0, QColor(255, 224, 138, 0))
+            gradient.setColorAt(0.45, QColor(255, 235, 175, 20))
+            gradient.setColorAt(0.5, QColor(255, 248, 218, 150))
+            gradient.setColorAt(0.55, QColor(255, 221, 135, 20))
+            gradient.setColorAt(1.0, QColor(255, 210, 110, 0))
+            clip = QPainterPath()
+            clip.addRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 9, 9)
+            painter.setClipPath(clip)
+            painter.fillRect(self.rect(), gradient)
         painter.end()
+
+    def showEvent(self, event: Any) -> None:
+        super().showEvent(event)
+        if self._sheen_enabled:
+            self._sheen_animation.start()
+
+    def hideEvent(self, event: Any) -> None:
+        self._sheen_animation.stop()
+        super().hideEvent(event)
 
 
 class PremiumReveal(QWidget):
-    """Three-second full-screen, vector-rendered cosmetic theme reveal."""
+    """A compact, frameless three-second reveal for the cosmetic Premium theme."""
 
     finished = Signal()
 
@@ -283,12 +340,12 @@ class PremiumReveal(QWidget):
         super().__init__(parent, Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
         self._colors = dict(colors)
         self._progress = 0.0
+        self._completed = False
         self._started = time.perf_counter()
         self._particles = [
             (random.Random(702 + index).random(), random.Random(1702 + index).random())
             for index in range(54)
         ]
-        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._animation = QPropertyAnimation(self, b"progress", self)
         self._animation.setDuration(3000)
@@ -296,6 +353,9 @@ class PremiumReveal(QWidget):
         self._animation.setEndValue(1.0)
         self._animation.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._animation.finished.connect(self._complete)
+        self.setFixedSize(620, 420)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
 
     def get_progress(self) -> float:
         return self._progress
@@ -307,18 +367,31 @@ class PremiumReveal(QWidget):
     progress = Property(float, get_progress, set_progress)
 
     def start(self) -> None:
-        screen = self.screen() or QApplication.primaryScreen()
+        parent = self.parentWidget()
+        if parent is not None:
+            center = parent.frameGeometry().center()
+            self.move(center.x() - self.width() // 2, center.y() - self.height() // 2)
+        screen = QApplication.screenAt(
+            self.geometry().center()
+        ) or QApplication.primaryScreen()
         if screen is not None:
-            self.setGeometry(screen.geometry())
-        self.showFullScreen()
+            bounds = screen.availableGeometry()
+            x = min(max(self.x(), bounds.left()), bounds.right() - self.width() + 1)
+            y = min(max(self.y(), bounds.top()), bounds.bottom() - self.height() + 1)
+            self.move(x, y)
         self.raise_()
+        self.show()
         self.activateWindow()
         self.setFocus()
         self._animation.start()
 
     def _complete(self) -> None:
-        self.finished.emit()
+        if self._completed:
+            return
+        self._completed = True
+        self._animation.stop()
         self.close()
+        self.finished.emit()
 
     def keyPressEvent(self, event: Any) -> None:
         if event.key() == Qt.Key.Key_Escape:
@@ -334,19 +407,27 @@ class PremiumReveal(QWidget):
         width, height = self.width(), self.height()
         center = QPointF(width / 2, height / 2)
         bg = QColor(self._colors["bg"])
-        painter.fillRect(self.rect(), bg)
+        surface = QPainterPath()
+        surface.addRoundedRect(QRectF(self.rect()).adjusted(1, 1, -1, -1), 24, 24)
+        painter.fillPath(surface, bg)
         gold = QColor(self._colors["primary"])
         light = QColor(self._colors["accent"])
 
-        glow = QRadialGradient(center, max(width, height) * 0.48)
+        elapsed = time.perf_counter() - self._started
+        halo_center = QPointF(
+            width * (0.48 + math.sin(elapsed * 0.72) * 0.08),
+            height * (0.45 + math.cos(elapsed * 0.58) * 0.06),
+        )
+        glow = QRadialGradient(halo_center, max(width, height) * 0.78)
         gold_glow = QColor(gold)
-        gold_glow.setAlphaF(0.12 * (1 - self._progress * 0.4))
+        gold_glow.setAlphaF(0.25 * (1 - self._progress * 0.3))
         glow.setColorAt(0, gold_glow)
+        gold_glow.setAlphaF(0.07)
+        glow.setColorAt(0.45, gold_glow)
         gold_glow.setAlpha(0)
         glow.setColorAt(1, gold_glow)
-        painter.fillRect(self.rect(), glow)
+        painter.fillPath(surface, glow)
 
-        elapsed = time.perf_counter() - self._started
         for index, (px, py) in enumerate(self._particles):
             drift = (elapsed * (0.018 + (index % 5) * 0.004)) % 0.18
             particle = QPointF(px * width, ((py - drift) % 1.0) * height)
@@ -392,6 +473,9 @@ class PremiumReveal(QWidget):
             Qt.AlignmentFlag.AlignCenter,
             "UNE NOUVELLE SIGNATURE SE RÉVÈLE",
         )
+        painter.setPen(QPen(QColor(gold.red(), gold.green(), gold.blue(), 95), 1))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(surface.boundingRect(), 24, 24)
         painter.end()
 
 
@@ -526,6 +610,39 @@ def _section_heading(title: str, subtitle: str) -> QWidget:
     return row
 
 
+def _lumen_icon() -> QIcon:
+    pixmap = QPixmap(64, 64)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    background = QPainterPath()
+    background.addRoundedRect(QRectF(2, 2, 60, 60), 18, 18)
+    painter.fillPath(background, QColor(THEMES["Violet"]["bg"]))
+
+    center = QPointF(32, 32)
+    glow = QRadialGradient(center, 25)
+    color = QColor(THEMES["Violet"]["primary"])
+    color.setAlpha(48)
+    glow.setColorAt(0, color)
+    color.setAlpha(0)
+    glow.setColorAt(1, color)
+    painter.fillPath(background, glow)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    for radius, opacity, width in ((21, 95, 1.5), (15, 160, 1.4)):
+        ring = QColor(THEMES["Violet"]["primary"])
+        ring.setAlpha(opacity)
+        painter.setPen(QPen(ring, width))
+        painter.drawEllipse(center, radius, radius)
+    core = QRadialGradient(center, 8)
+    core.setColorAt(0, QColor(THEMES["Violet"]["accent"]))
+    core.setColorAt(1, QColor(THEMES["Violet"]["primary"]))
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(core)
+    painter.drawEllipse(center, 7, 7)
+    painter.end()
+    return QIcon(pixmap)
+
+
 class LumenApp(QMainWindow):
     """PySide6 desktop workspace for Lumen's local OSINT analysis tools."""
 
@@ -546,9 +663,11 @@ class LumenApp(QMainWindow):
         self.theme_name = self.settings["theme"]
         self.accent_override = self.settings.get("accent")
         self.premium_unlocked = bool(self.settings.get("premium_unlocked", False))
+        self._premium_reveal: PremiumReveal | None = None
         self._link_task: LinkResolveTask | None = None
         self._set_theme_palette(self.theme_name)
         self.setWindowTitle(f"{APP_NAME} — Espace d’analyse local")
+        self.setWindowIcon(_lumen_icon())
         self.setMinimumSize(1040, 690)
         self.resize(1280, 820)
         self._build_workspace()
@@ -735,13 +854,13 @@ class LumenApp(QMainWindow):
         actions.setSpacing(9)
         self.read_button = GlowButton("Lire les métadonnées", primary=True)
         self.read_button.setEnabled(False)
-        self.read_button.clicked.connect(lambda: self._guard(self._read_metadata))
+        self.read_button.clicked.connect(self._guard(self._read_metadata))
         self.clean_button = GlowButton("Nettoyer une copie")
         self.clean_button.setEnabled(False)
-        self.clean_button.clicked.connect(lambda: self._guard(self._clean_metadata))
+        self.clean_button.clicked.connect(self._guard(self._clean_metadata))
         self.export_metadata_button = GlowButton("Exporter JSON")
         self.export_metadata_button.setEnabled(False)
-        self.export_metadata_button.clicked.connect(lambda: self._guard(self._export_metadata))
+        self.export_metadata_button.clicked.connect(self._guard(self._export_metadata))
         actions.addWidget(self.read_button)
         actions.addWidget(self.clean_button)
         actions.addWidget(self.export_metadata_button)
@@ -782,9 +901,9 @@ class LumenApp(QMainWindow):
         name_row = QHBoxLayout()
         name_row.setSpacing(10)
         self.name_entry = self._entry("Nom complet ou pseudonyme")
-        self.name_entry.returnPressed.connect(lambda: self._guard(self._generate_identity_report))
+        self.name_entry.returnPressed.connect(self._guard(self._generate_identity_report))
         self.generate_button = GlowButton("Générer les pistes", primary=True)
-        self.generate_button.clicked.connect(lambda: self._guard(self._generate_identity_report))
+        self.generate_button.clicked.connect(self._guard(self._generate_identity_report))
         name_row.addWidget(self.name_entry, 1)
         name_row.addWidget(self.generate_button)
         content.addLayout(name_row)
@@ -795,10 +914,10 @@ class LumenApp(QMainWindow):
         compare_row.setSpacing(10)
         self.identity_left = self._entry("Premier identifiant")
         self.identity_right = self._entry("Second identifiant")
-        self.identity_left.returnPressed.connect(lambda: self._guard(self._compare_identities))
-        self.identity_right.returnPressed.connect(lambda: self._guard(self._compare_identities))
+        self.identity_left.returnPressed.connect(self._guard(self._compare_identities))
+        self.identity_right.returnPressed.connect(self._guard(self._compare_identities))
         self.compare_button = GlowButton("Comparer")
-        self.compare_button.clicked.connect(lambda: self._guard(self._compare_identities))
+        self.compare_button.clicked.connect(self._guard(self._compare_identities))
         compare_row.addWidget(self.identity_left, 1)
         compare_row.addWidget(self.identity_right, 1)
         compare_row.addWidget(self.compare_button)
@@ -838,9 +957,9 @@ class LumenApp(QMainWindow):
         url_row = QHBoxLayout()
         url_row.setSpacing(10)
         self.url_entry = self._entry("https://exemple.fr/lien-raccourci")
-        self.url_entry.returnPressed.connect(lambda: self._guard(self._resolve_link))
+        self.url_entry.returnPressed.connect(self._guard(self._resolve_link))
         self.resolve_button = GlowButton("Suivre les redirections", primary=True)
-        self.resolve_button.clicked.connect(lambda: self._guard(self._resolve_link))
+        self.resolve_button.clicked.connect(self._guard(self._resolve_link))
         url_row.addWidget(self.url_entry, 1)
         url_row.addWidget(self.resolve_button)
         content.addLayout(url_row)
@@ -1020,6 +1139,11 @@ class LumenApp(QMainWindow):
             child.set_accent(colors["accent"])
         for child in self.findChildren(ResultView):
             child.set_accent(colors["accent"])
+        premium_theme = self.theme_name == "Obsidienne dorée"
+        for button in self.findChildren(GlowButton):
+            button.set_sheen_enabled(
+                premium_theme and button.objectName() == "primaryButton"
+            )
         self.theme_badge.setText(f"✦  {self.theme_name.upper()}")
 
     @staticmethod
@@ -1070,8 +1194,8 @@ class LumenApp(QMainWindow):
         }
         self.status_indicator.setStyleSheet(f"color: {colors.get(state, DARK_THEME['accent'])};")
 
-    def _guard(self, action: Callable[[], Any]) -> Callable[[], None]:
-        def run() -> None:
+    def _guard(self, action: Callable[[], Any]) -> Callable[..., None]:
+        def run(*_signal_arguments: Any) -> None:
             try:
                 action()
             except Exception as error:
@@ -1277,11 +1401,19 @@ class LumenApp(QMainWindow):
         dialog.exec()
 
     def _play_premium_reveal(self) -> None:
+        if self._premium_reveal is not None:
+            self._premium_reveal.close()
+            self._premium_reveal.deleteLater()
         reveal = PremiumReveal(THEMES["Obsidienne dorée"], self)
+        self._premium_reveal = reveal
         reveal.finished.connect(self._finish_premium_reveal)
         reveal.start()
 
     def _finish_premium_reveal(self) -> None:
+        reveal = self._premium_reveal
+        self._premium_reveal = None
+        if reveal is not None:
+            reveal.deleteLater()
         self._set_theme_palette(self.theme_name)
         self._apply_theme()
         self._set_status("Lumen Obsidienne est prête · signature Premium activée.")
