@@ -17,9 +17,9 @@ Lumen est un outil OSINT complètement local. Toutes les données restent sur la
 - 💾 Export JSON et TXT
 
 ### Apparence
-- 🎨 Interface Python/CustomTkinter repensée : bulles animées en arrière-plan, reflets subtils et boutons plus soignés
-- 🖥️ Prise en charge du DPI Windows pour conserver des textes nets et des bulles à la bonne échelle sur les écrans haute résolution
-- ✨ Animations dessinées en continu et indépendantes de la fréquence d'images
+- 🎨 Interface PySide6 native : espace de travail structuré, navigation permanente et panneaux d’analyse lisibles
+- 🖥️ Typographie et éclairages vectoriels haute résolution, automatiquement adaptés au DPI de l’écran
+- ✨ Reflets lumineux animés et révélation Premium plein écran
 - 🎨 Thèmes Violet, Clair rouge et blanc, Marron et Obsidienne dorée, avec des accents propres à chaque palette
 - ⚙️ Choix du thème et de la couleur principale depuis les réglages
 - 💾 Préférences d'apparence mémorisées localement dans `data/lumen_settings.json`
@@ -44,9 +44,9 @@ Lumen est un outil OSINT complètement local. Toutes les données restent sur la
 ## 🛠️ Stack Technique
 
 - **Python 3.11+**
-- **CustomTkinter** - Interface moderne et responsive
-- **Pillow + piexif + PyPDF2** - Métadonnées
-- **requests** - Requêtes volontaires (réseau local only)
+- **PySide6** - Interface de bureau haute résolution avec rendu vectoriel
+- **Pillow + piexif + pypdf** - Métadonnées
+- **requests** - Suivi volontaire des redirections web, uniquement sur demande
 - **PyInstaller** - Compilation en .exe
 - **SQLite3** - Base de données locale
 
@@ -61,7 +61,9 @@ Lumen/
 │   ├── __init__.py
 │   ├── ui/
 │   │   ├── __init__.py
-│   │   ├── main_window.py          # Fenêtre principale
+│   │   ├── main_window.py          # Export de compatibilité de la fenêtre
+│   │   ├── qt_main_window.py       # Espace de travail PySide6
+│   │   ├── metadata_view.py        # Mise en forme des rapports
 │   │   ├── tabs/
 │   │   │   ├── __init__.py
 │   │   │   ├── exif_tab.py         # Tab Exif & Meta
@@ -165,8 +167,8 @@ Le fichier `.exe` sera généré dans `dist/Lumen.exe`
 ## 📋 Checklist de Conformité
 
 - ✅ Compilable en .exe avec PyInstaller `--onefile --windowed`
-- ✅ Interface CustomTkinter sombre et moderne
-- ✅ Drag & drop natif
+- ✅ Interface PySide6 native, haute résolution et adaptée au DPI
+- ✅ Glisser-déposer d’images et de PDF sur la vue Exif & Meta
 - ✅ Aucune donnée envoyée sans action explicite
 - ✅ Code typé et commenté
 - ✅ Gestion d'erreurs robuste

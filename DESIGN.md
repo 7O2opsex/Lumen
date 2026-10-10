@@ -2,9 +2,10 @@
 
 ## Direction
 
-Lumen is a private desktop analysis instrument. Its interface borrows the slow,
-floating oxygen bubbles and theme-tinted highlights of 702oxygen, while its own
-optical wordmark and focused analysis workspace keep the product distinct.
+Lumen is a private desktop analysis instrument. Its interface borrows the
+theme-tinted light and reflections of 702oxygen while expressing them through
+an optical workspace: permanent task navigation, layered work surfaces, and
+crisp local-analysis controls.
 
 ## Color and surfaces
 
@@ -14,22 +15,19 @@ surface with red controls and rose reflections. Marron uses dark graphite-brown
 surfaces and copper highlights. Obsidienne dorée reserves restrained gold light
 for its cosmetic Premium theme.
 
-Panels use quiet, thin borders and softly rounded corners. Inputs and results
-remain opaque, high-contrast work surfaces. Primary buttons use the current
-theme's accent and a slightly darker hover state.
+Panels use quiet borders, softly rounded corners, and a fine illuminated top
+edge. Inputs and results remain opaque, high-contrast work surfaces. Primary
+buttons use the current theme's accent and a responsive hover light.
 
 ## Motion and interaction
 
-Ambient bubbles rise slowly behind the workspace and carry a small curved
-reflection. Their positions are interpolated against elapsed time and scaled
-with the active monitor; the Windows process enables per-monitor DPI awareness
-before the Tk window is created. Motion stays decorative and does not delay
-analysis actions.
-Premium's secret cosmetic unlock adds a single, full-screen, three-second gold
-reveal with a smoother vector sweep; Escape can dismiss the sequence. Text keeps
-the system font's native high-DPI rendering instead of being enlarged from a
-low-resolution bitmap.
+Qt paints the ambient optical glow, illuminated surfaces, and Premium reveal
+with antialiased vectors at the active display's native scale. Hover light uses
+short, interruptible property animations. Background motion stays restrained
+and does not delay local analysis actions. Premium's secret cosmetic unlock adds
+a single full-screen, three-second gold reveal; Escape can dismiss it.
 
-The first screen keeps the Lumen wordmark, the local/private status, the four
-analysis task tabs, and the current local status visible. Existing analysis
-flows, local data handling, and theme preferences remain unchanged.
+The first screen keeps Lumen's wordmark, local/private status, four persistent
+analysis destinations, and current activity visible. The four destinations are
+independent tools, not a numbered sequence. Existing analysis flows, local
+data handling, and theme preferences remain intact.
