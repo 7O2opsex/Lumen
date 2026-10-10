@@ -21,9 +21,14 @@ theme's accent and a slightly darker hover state.
 ## Motion and interaction
 
 Ambient bubbles rise slowly behind the workspace and carry a small curved
-reflection. Motion stays decorative and does not delay analysis actions.
+reflection. Their positions are interpolated against elapsed time and scaled
+with the active monitor; the Windows process enables per-monitor DPI awareness
+before the Tk window is created. Motion stays decorative and does not delay
+analysis actions.
 Premium's secret cosmetic unlock adds a single, full-screen, three-second gold
-reveal; Escape can dismiss the sequence.
+reveal with a smoother vector sweep; Escape can dismiss the sequence. Text keeps
+the system font's native high-DPI rendering instead of being enlarged from a
+low-resolution bitmap.
 
 The first screen keeps the Lumen wordmark, the local/private status, the four
 analysis task tabs, and the current local status visible. Existing analysis

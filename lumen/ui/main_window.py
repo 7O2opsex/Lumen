@@ -7,10 +7,12 @@ FIRST VIEWPORT: Lumen's illuminated wordmark and local badge sit above four clea
 FORM: A compact desktop instrument panel, animated only by slow bubbles and the focused Premium reveal.
 """
 
+import ctypes
 import json
 import math
 import random
 import re
+import sys
 import time
 from pathlib import Path
 from tkinter import Canvas, colorchooser, filedialog, messagebox
@@ -35,10 +37,38 @@ from lumen.ui.tabs.identity_tab import build_identity_search_targets
 from lumen.ui.tabs.links_tab import domain_risk_score
 
 
+def _enable_windows_dpi_awareness() -> None:
+    if sys.platform != "win32":
+        return
+
+    try:
+        shcore = ctypes.WinDLL("shcore", use_last_error=True)
+        set_awareness = shcore.SetProcessDpiAwareness
+    except (AttributeError, OSError):
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        set_awareness = user32.SetProcessDPIAware
+        set_awareness.argtypes = []
+        set_awareness.restype = ctypes.c_bool
+        if not set_awareness() and ctypes.get_last_error() not in (0, 5):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return
+
+    set_awareness.argtypes = [ctypes.c_int]
+    set_awareness.restype = ctypes.c_long
+    # Match CustomTkinter's per-monitor mode; Tk has window-frame issues with V2.
+    result = set_awareness(2)
+    if result not in (0, -2147024891, 0x80070005):
+        raise OSError(
+            "Unable to enable Windows high-DPI awareness "
+            f"(0x{result & 0xFFFFFFFF:08X})."
+        )
+
+
 class LumenApp(ctk.CTk):
     """Desktop interface for local file and identity analysis."""
 
     def __init__(self) -> None:
+        _enable_windows_dpi_awareness()
         super().__init__()
         self.storage = LocalStorage()
         self.current_metadata: dict[str, Any] | None = None
@@ -99,12 +129,15 @@ class LumenApp(ctk.CTk):
         )
         canvas.place(relwidth=1, relheight=1)
         canvas.tk.call("lower", canvas._w)
+        scale = self._get_window_scaling()
+        width = max(canvas.winfo_width(), self.winfo_width(), 1)
+        height = max(canvas.winfo_height(), self.winfo_height(), 1)
         rng = random.Random(702)
         bubble_color = DARK_THEME["bubble"]
         for _ in range(25):
-            radius = rng.uniform(7, 26)
-            x = rng.uniform(0, 1080)
-            y = rng.uniform(0, 740)
+            radius = rng.uniform(7, 26) * scale
+            x = rng.uniform(0, width)
+            y = rng.uniform(0, height)
             oval = canvas.create_oval(
                 x - radius,
                 y - radius,
@@ -127,20 +160,23 @@ class LumenApp(ctk.CTk):
             self._background_items.append(
                 (oval, reflection, x, y, radius, rng.uniform(0.12, 0.38))
             )
-        self._animate_ambient_background(canvas, 0)
+        self._animate_ambient_background(canvas, time.perf_counter())
 
-    def _animate_ambient_background(self, canvas: Canvas, frame: int) -> None:
+    def _animate_ambient_background(self, canvas: Canvas, last_frame: float) -> None:
         if not canvas.winfo_exists():
             return
+        now = time.perf_counter()
+        elapsed = min(max(now - last_frame, 0), 0.1)
+        scale = self._get_window_scaling()
         width = max(canvas.winfo_width(), 1)
         height = max(canvas.winfo_height(), 1)
         updated: list[tuple[int, int, float, float, float, float]] = []
         for oval, reflection, x, y, radius, speed in self._background_items:
-            y -= speed
+            y -= speed * (elapsed / 0.048) * scale
             if y < -radius * 2:
                 y = height + radius
                 x = (x + 137) % width
-            drift = math.sin((frame + x) / 90) * 8
+            drift = math.sin((now * 0.23) + x / 90) * 8 * scale
             center_x = (x + drift) % width
             canvas.coords(
                 oval,
@@ -159,8 +195,8 @@ class LumenApp(ctk.CTk):
             updated.append((oval, reflection, x, y, radius, speed))
         self._background_items = updated
         self._background_animation = self.after(
-            48,
-            lambda: self._animate_ambient_background(canvas, frame + 1),
+            16,
+            lambda: self._animate_ambient_background(canvas, now),
         )
 
     def _load_settings(self) -> dict[str, Any]:
@@ -328,14 +364,15 @@ class LumenApp(ctk.CTk):
         )
         canvas.pack(fill="both", expand=True)
         cx, cy = reveal.winfo_screenwidth() / 2, reveal.winfo_screenheight() / 2
+        dpi_scale = reveal._get_window_scaling()
         rings = [
             canvas.create_oval(
-                cx - radius,
-                cy - radius,
-                cx + radius,
-                cy + radius,
+                cx - radius * dpi_scale,
+                cy - radius * dpi_scale,
+                cx + radius * dpi_scale,
+                cy + radius * dpi_scale,
                 outline=color,
-                width=width,
+                width=max(round(width * dpi_scale), 1),
             )
             for radius, color, width in (
                 (94, palette["border"], 1),
@@ -344,36 +381,39 @@ class LumenApp(ctk.CTk):
             )
         ]
         core = canvas.create_oval(
-            cx - 78,
-            cy - 78,
-            cx + 78,
-            cy + 78,
-            fill=palette["bg_alt"], outline=palette["primary"], width=2,
+            cx - 78 * dpi_scale,
+            cy - 78 * dpi_scale,
+            cx + 78 * dpi_scale,
+            cy + 78 * dpi_scale,
+            fill=palette["bg_alt"],
+            outline=palette["primary"],
+            width=max(round(2 * dpi_scale), 1),
         )
         shine = canvas.create_oval(
-            cx - 55,
-            cy - 55,
-            cx + 55,
-            cy + 55,
-            outline=palette["accent"], width=1,
+            cx - 55 * dpi_scale,
+            cy - 55 * dpi_scale,
+            cx + 55 * dpi_scale,
+            cy + 55 * dpi_scale,
+            outline=palette["accent"],
+            width=max(round(dpi_scale), 1),
         )
         title = canvas.create_text(
             cx,
-            cy - 6,
+            cy - 6 * dpi_scale,
             text="L U M E N",
             fill=palette["text"],
             font=("Segoe UI", 30, "bold"),
         )
         subtitle = canvas.create_text(
             cx,
-            cy + 40,
+            cy + 40 * dpi_scale,
             text="OBSIDIAN  /  GOLD",
             fill=palette["primary"],
             font=("Segoe UI", 10, "bold"),
         )
         caption = canvas.create_text(
             cx,
-            cy + 190,
+            cy + 190 * dpi_scale,
             text="UNE NOUVELLE SIGNATURE SE RÉVÈLE",
             fill=palette["muted"],
             font=("Segoe UI", 10, "bold"),
@@ -384,14 +424,14 @@ class LumenApp(ctk.CTk):
             0,
             cy,
             fill=palette["accent"],
-            width=2,
+            width=max(round(2 * dpi_scale), 1),
         )
         particles = []
         rng = random.Random(702)
         for _ in range(34):
             x = rng.uniform(0, reveal.winfo_screenwidth())
             y = rng.uniform(0, reveal.winfo_screenheight())
-            radius = rng.uniform(1, 3)
+            radius = rng.uniform(1, 3) * dpi_scale
             speed = rng.uniform(0.35, 1.1)
             item = canvas.create_oval(
                 x - radius,
@@ -411,19 +451,22 @@ class LumenApp(ctk.CTk):
             elapsed = time.monotonic() - started_at
             width, height = reveal.winfo_width(), reveal.winfo_height()
             cx, cy = width / 2, height / 2
-            phase = min(elapsed / 2.5, 1.0)
-            scale = 0.72 + phase * 0.28
+            progress = 0.72 + min(elapsed / 2.5, 1.0) * 0.28
+            dpi_scale = reveal._get_window_scaling()
             for radius, item in zip((94, 122, 152), rings):
-                scaled = radius * scale + math.sin(elapsed * 2 + radius) * 2
+                scaled = (
+                    radius * dpi_scale * progress
+                    + math.sin(elapsed * 2 + radius) * 2 * dpi_scale
+                )
                 canvas.coords(item, cx - scaled, cy - scaled, cx + scaled, cy + scaled)
             canvas.coords(
                 core,
-                cx - 78 * scale,
-                cy - 78 * scale,
-                cx + 78 * scale,
-                cy + 78 * scale,
+                cx - 78 * dpi_scale * progress,
+                cy - 78 * dpi_scale * progress,
+                cx + 78 * dpi_scale * progress,
+                cy + 78 * dpi_scale * progress,
             )
-            shine_radius = 55 + math.sin(elapsed * 3) * 5
+            shine_radius = (55 + math.sin(elapsed * 3) * 5) * dpi_scale
             canvas.coords(
                 shine,
                 cx - shine_radius,
@@ -431,11 +474,17 @@ class LumenApp(ctk.CTk):
                 cx + shine_radius,
                 cy + shine_radius,
             )
-            canvas.coords(title, cx, cy - 6)
-            canvas.coords(subtitle, cx, cy + 40)
-            canvas.coords(caption, cx, cy + 190)
+            canvas.coords(title, cx, cy - 6 * dpi_scale)
+            canvas.coords(subtitle, cx, cy + 40 * dpi_scale)
+            canvas.coords(caption, cx, cy + 190 * dpi_scale)
             sweep_x = (elapsed / 2.7) * width
-            canvas.coords(sweep, sweep_x - 130, cy, sweep_x + 130, cy)
+            canvas.coords(
+                sweep,
+                sweep_x - 130 * dpi_scale,
+                cy,
+                sweep_x + 130 * dpi_scale,
+                cy,
+            )
             for item, x, y, radius, speed in particles:
                 next_y = (y - elapsed * speed * 24) % height
                 canvas.coords(
@@ -448,7 +497,7 @@ class LumenApp(ctk.CTk):
             if elapsed >= 3.0:
                 finish()
             else:
-                reveal.after(32, animate_reveal)
+                reveal.after(16, animate_reveal)
 
         def finish() -> None:
             if reveal.winfo_exists():

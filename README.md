@@ -18,6 +18,8 @@ Lumen est un outil OSINT complètement local. Toutes les données restent sur la
 
 ### Apparence
 - 🎨 Interface Python/CustomTkinter repensée : bulles animées en arrière-plan, reflets subtils et boutons plus soignés
+- 🖥️ Prise en charge du DPI Windows pour conserver des textes nets et des bulles à la bonne échelle sur les écrans haute résolution
+- ✨ Animations dessinées en continu et indépendantes de la fréquence d'images
 - 🎨 Thèmes Violet, Clair rouge et blanc, Marron et Obsidienne dorée, avec des accents propres à chaque palette
 - ⚙️ Choix du thème et de la couleur principale depuis les réglages
 - 💾 Préférences d'apparence mémorisées localement dans `data/lumen_settings.json`
