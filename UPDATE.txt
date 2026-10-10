@@ -28,7 +28,7 @@ Commit : ff8c0cb — Polish Lumen Qt interface
   moteur et ses ressources graphiques; les outils métier restent conservés.
 
 V1.6 — Réparation des actions et finition Premium
-Publication : commit courant de la branche
+Commit : 876a367 — Fix Lumen UI actions and Premium reveal
 - Réparation des boutons Exif, Identity et Links qui ne déclenchaient plus
   leurs actions; les erreurs sont présentées à l'utilisateur.
 - Reveal Premium remplacé par une fenêtre temporaire sans bordure, non
